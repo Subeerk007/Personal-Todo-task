@@ -282,7 +282,7 @@ function EditModal({
               className="task-input w-full rounded-xl border border-borderLight bg-cream/50 px-4 py-2.5 text-sm text-navy outline-none appearance-none cursor-pointer"
             >
               {CATEGORIES.map((c) => (
-                <option key={c.label} value={c.label}>{c.label}</option>
+                <option key={c.label} value={c.label} className="bg-slate-800 text-white">{c.label}</option>
               ))}
             </select>
           </div>
@@ -564,8 +564,13 @@ export default function Home() {
 
   /* ════════════════════ RENDER ════════════════════ */
   return (
-    <main className="min-h-screen bg-cream p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-[1200px]">
+    <main
+      className="min-h-screen relative p-4 md:p-6 lg:p-8 bg-cover bg-center bg-fixed bg-no-repeat text-white"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.6)), url('/marvels-spider-man-3840x2160-11990.jpeg')`,
+      }}
+    >
+      <div className="mx-auto max-w-[1200px] relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
 
           {/* ══════════ LEFT SIDEBAR ══════════ */}
@@ -767,7 +772,7 @@ export default function Home() {
                     className="rounded-xl border border-borderLight bg-white/60 px-3 py-2.5 text-xs font-medium text-navy outline-none appearance-none cursor-pointer hover:border-terra/30 transition-all"
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c.label} value={c.label}>{c.label}</option>
+                      <option key={c.label} value={c.label} className="bg-slate-800 text-white">{c.label}</option>
                     ))}
                   </select>
                   <button
