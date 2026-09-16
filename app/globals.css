@@ -1,0 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Base Styles ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body {
+  background-color: #FDF6F0;
+  color: #2C3E50;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Custom Scrollbar ===== */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #D4CCC2;
+  border-radius: 100px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #B8AFA5;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ===== Glass Panel ===== */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(232, 224, 214, 0.6);
+}
+
+/* ===== Stat Cards ===== */
+.stat-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+}
+
+/* ===== Task Item ===== */
+.task-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.task-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+}
+
+/* ===== Calendar Day ===== */
+.cal-day {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cal-day:hover {
+  background-color: rgba(199, 91, 57, 0.08);
+  transform: scale(1.1);
+}
+.cal-day.selected {
+  background-color: #C75B39;
+  color: white;
+  box-shadow: 0 2px 8px rgba(199, 91, 57, 0.35);
+}
+.cal-day.today-ring {
+  border: 2px solid #C75B39;
+  color: #C75B39;
+  font-weight: 600;
+}
+.cal-day.has-tasks::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #E8714D;
+}
+
+/* ===== Quote Section ===== */
+.quote-section {
+  position: relative;
+  overflow: hidden;
+}
+.quote-section::before {
+  content: '\201C';
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  font-size: 72px;
+  font-family: 'Outfit', sans-serif;
+  color: rgba(199, 91, 57, 0.12);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ===== Filter Tab ===== */
+.filter-tab {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.filter-tab.active {
+  background-color: #C75B39;
+  color: white;
+  box-shadow: 0 2px 8px rgba(199, 91, 57, 0.25);
+}
+
+/* ===== Checkbox ===== */
+.task-checkbox {
+  transition: all 0.2s ease;
+}
+.task-checkbox:hover {
+  border-color: #C75B39;
+  box-shadow: 0 0 0 3px rgba(199, 91, 57, 0.1);
+}
+.task-checkbox.checked {
+  background-color: #27AE60;
+  border-color: #27AE60;
+}
+
+/* ===== Add Button ===== */
+.add-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(199, 91, 57, 0.35);
+}
+.add-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(199, 91, 57, 0.25);
+}
+
+/* ===== Input Focus ===== */
+.task-input {
+  transition: all 0.3s ease;
+}
+.task-input:focus {
+  border-color: #C75B39;
+  box-shadow: 0 0 0 3px rgba(199, 91, 57, 0.1);
+}
+
+/* ===== Category Tag ===== */
+.category-tag {
+  transition: all 0.2s ease;
+}
+
+/* ===== Today Button ===== */
+.today-btn {
+  transition: all 0.25s ease;
+}
+.today-btn:hover {
+  background-color: rgba(199, 91, 57, 0.08);
+}
+
+/* ===== Delete Button ===== */
+.delete-btn {
+  transition: all 0.2s ease;
+}
+.delete-btn:hover {
+  background-color: #FEE2E2;
+  color: #DC2626;
+}
+
+/* ===== Edit Button ===== */
+.edit-btn {
+  transition: all 0.2s ease;
+}
+.edit-btn:hover {
+  background-color: #EBF5FB;
+  color: #2980B9;
+}
+
+/* ===== Edit Modal Overlay ===== */
+.modal-overlay {
+  background: rgba(44, 62, 80, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ===== Shimmer Loader ===== */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(199, 91, 57, 0.05) 0%,
+    rgba(199, 91, 57, 0.12) 50%,
+    rgba(199, 91, 57, 0.05) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* ===== Responsive tweaks ===== */
+@media (max-width: 1024px) {
+  .planner-grid {
+    grid-template-columns: 1fr;
+  }
+}
