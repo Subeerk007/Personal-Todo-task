@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import { ref, onValue, set, push, remove, update } from "firebase/database";
+import { enableNotifications, listenToForegroundMessages, playNotificationSound, stopNotificationSound } from "@/lib/notification";
 
 /* ───────── Types ───────── */
 type Category = "Work" | "Personal" | "Study";
@@ -13,6 +14,8 @@ type Task = {
   done: boolean;
   category: Category;
   createdAt: number;
+  timerDuration?: number; // total duration in seconds
+  timerEnd?: number; // timestamp when timer completes
 };
 
 type TaskMap = Record<string, Task[]>;
@@ -231,6 +234,80 @@ function DateIcon() {
   );
 }
 
+/* ─────── Live Countdown Timer Component ─────── */
+function TaskTimer({
+  task,
+  onAlarmTriggered,
+  onStopTimer,
+}: {
+  task: Task;
+  onAlarmTriggered: (taskId: string) => void;
+  onStopTimer: (taskId: string) => void;
+}) {
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const soundPlayedRef = useRef(false);
+
+  useEffect(() => {
+    if (!task.timerEnd || task.done) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const calcLeft = () => {
+      const remainingMs = task.timerEnd! - Date.now();
+      const remainingSec = Math.max(0, Math.floor(remainingMs / 1000));
+      setTimeLeft(remainingSec);
+
+      if (remainingSec === 0 && !soundPlayedRef.current) {
+        soundPlayedRef.current = true;
+        onAlarmTriggered(task.id);
+      }
+    };
+
+    calcLeft();
+    const interval = setInterval(calcLeft, 1000);
+    return () => clearInterval(interval);
+  }, [task.timerEnd, task.done, task.id, onAlarmTriggered]);
+
+  if (!task.timerEnd || task.done || timeLeft === null) return null;
+
+  const h = Math.floor(timeLeft / 3600);
+  const m = Math.floor((timeLeft % 3600) / 60);
+  const s = timeLeft % 60;
+  const formatted = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+
+  const isExpired = timeLeft === 0;
+
+  return (
+    <div className="inline-flex items-center gap-2">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-mono font-bold tracking-wider ${
+          isExpired
+            ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse"
+            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+        }`}
+        title={isExpired ? "Timer Expired! ⏰" : "Countdown Timer Active"}
+      >
+        <span className={isExpired ? "animate-bounce text-rose-400" : "animate-spin text-amber-400"}>⏰</span>
+        {isExpired ? "00:00:00 EXPIRED" : formatted}
+      </span>
+
+      {isExpired && (
+        <button
+          onClick={() => {
+            stopNotificationSound();
+            onStopTimer(task.id);
+          }}
+          className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs font-extrabold text-white shadow-lg shadow-rose-600/30 flex items-center gap-1 animate-pulse transition-all active:scale-95"
+          title="Stop Alarm & Clear Timer"
+        >
+          <span>🛑</span> Stop
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ─────── Edit Modal ─────── */
 function EditModal({
   task,
@@ -243,6 +320,13 @@ function EditModal({
 }) {
   const [text, setText] = useState(task.text);
   const [category, setCategory] = useState<Category>(task.category);
+
+  // Timer state for modal
+  const initialSeconds = task.timerDuration || 0;
+  const [hours, setHours] = useState(Math.floor(initialSeconds / 3600));
+  const [minutes, setMinutes] = useState(Math.floor((initialSeconds % 3600) / 60));
+  const [seconds, setSeconds] = useState(initialSeconds % 60);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -251,53 +335,124 @@ function EditModal({
 
   function handleSave() {
     if (!text.trim()) return;
-    onSave({ ...task, text: text.trim(), category });
+
+    const totalSeconds = (Number(hours) || 0) * 3600 + (Number(minutes) || 0) * 60 + (Number(seconds) || 0);
+
+    let updatedTimerEnd = task.timerEnd;
+    let updatedTimerDuration: number | undefined = totalSeconds > 0 ? totalSeconds : undefined;
+
+    // If timer duration changed or set for the first time
+    if (totalSeconds > 0) {
+      if (totalSeconds !== task.timerDuration || !task.timerEnd) {
+        updatedTimerEnd = Date.now() + totalSeconds * 1000;
+      }
+    } else {
+      updatedTimerEnd = undefined;
+    }
+
+    onSave({
+      ...task,
+      text: text.trim(),
+      category,
+      timerDuration: updatedTimerDuration,
+      timerEnd: updatedTimerEnd,
+    });
   }
 
   return (
-    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-cardHover animate-scaleIn"
+        className="w-full max-w-md rounded-3xl bg-slate-900 border border-white/15 p-6 shadow-2xl animate-scaleIn text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="font-heading text-lg font-semibold text-navy mb-4">Edit Task</h3>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-heading text-xl font-bold text-white flex items-center gap-2">
+            <span className="text-[#FF6B4A]">✏️</span> Edit Task
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+        </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-navyLight mb-1.5">Task Description</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Task Description</label>
             <input
               ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
-              className="task-input w-full rounded-xl border border-borderLight bg-cream/50 px-4 py-2.5 text-sm text-navy placeholder:text-navyFaint outline-none"
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-navyLight mb-1.5">Category</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as Category)}
-              className="task-input w-full rounded-xl border border-borderLight bg-cream/50 px-4 py-2.5 text-sm text-navy outline-none appearance-none cursor-pointer"
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none appearance-none cursor-pointer focus:border-[#FF6B4A]"
             >
               {CATEGORIES.map((c) => (
-                <option key={c.label} value={c.label} className="bg-slate-800 text-white">{c.label}</option>
+                <option key={c.label} value={c.label} className="bg-slate-900 text-white">{c.label}</option>
               ))}
             </select>
           </div>
+
+          {/* Countdown Timer Inputs */}
+          <div className="pt-2">
+            <label className="block text-xs font-semibold text-amber-400 mb-1.5 flex items-center gap-1.5">
+              <span>⏱️</span> Set Countdown Timer (HH : MM : SS)
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Hours</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={hours}
+                  onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full text-center rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Minutes</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={minutes}
+                  onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Seconds</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={seconds}
+                  onChange={(e) => setSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  className="w-full text-center rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2 italic">
+              Timer khtm hone par warning sound bajegi aur notification aayegi.
+            </p>
+          </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-3 pt-2 border-t border-white/10">
           <button
             onClick={onClose}
-            className="rounded-xl px-5 py-2.5 text-sm font-medium text-navyLight border border-borderLight hover:bg-cream transition-all"
+            className="rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/5 transition-all"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="add-btn rounded-xl bg-terra px-5 py-2.5 text-sm font-medium text-white shadow-button"
+            className="add-btn rounded-2xl bg-gradient-to-r from-[#FF6B4A] to-[#FF4500] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20"
           >
             Save Changes
           </button>
@@ -322,7 +477,21 @@ export default function Home() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [quote, setQuote] = useState<{ q: string; a: string } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Initialize Push Notifications ── */
+  useEffect(() => {
+    enableNotifications().then((token) => {
+      if (token) {
+        setFcmToken(token);
+      }
+    });
+
+    listenToForegroundMessages((payload) => {
+      console.log("Notification payload received:", payload);
+    });
+  }, []);
 
   /* ── Sync tasks from Firebase Realtime Database ── */
   useEffect(() => {
@@ -535,6 +704,51 @@ export default function Home() {
       }
     },
     [selectedKey]
+  );
+
+  const handleAlarmTriggered = useCallback((taskId: string) => {
+    // Play warning sound continuously in a loop when timer ends
+    playNotificationSound(true);
+
+    // Show native desktop notification
+    if (typeof window !== "undefined" && Notification.permission === "granted") {
+      new Notification("⏰ Task Alarm Expired!", {
+        body: "Your task timer has ended! Click Stop Alarm in app.",
+        icon: "/marvels-spider-man-3840x2160-11990.jpeg",
+      });
+    }
+  }, []);
+
+  const handleStopTimer = useCallback(
+    (taskId: string) => {
+      stopNotificationSound();
+      const task = (tasks[selectedKey] || []).find((t) => t.id === taskId);
+      if (!task) return;
+
+      const updatedTask: Task = {
+        ...task,
+        timerDuration: undefined,
+        timerEnd: undefined,
+      };
+
+      setTasks((prev) => {
+        const currentList = prev[selectedKey] || [];
+        return {
+          ...prev,
+          [selectedKey]: currentList.map((t) => (t.id === taskId ? updatedTask : t)),
+        };
+      });
+
+      try {
+        const taskRef = ref(db, `${DB_TASKS_PATH}/${selectedKey}/${taskId}`);
+        update(taskRef, { timerDuration: null, timerEnd: null }).catch((err) =>
+          console.error("Firebase update error:", err)
+        );
+      } catch (e) {
+        console.error("Firebase connection error:", e);
+      }
+    },
+    [selectedKey, tasks]
   );
 
   function saveEditedTask(updated: Task) {
@@ -753,6 +967,19 @@ export default function Home() {
                       — Good Day Ahead! ☀️
                     </p>
                   </div>
+                  {/* Notification Toggle Button */}
+                  <button
+                    onClick={() => {
+                      playNotificationSound();
+                      enableNotifications().then(t => setFcmToken(t));
+                    }}
+                    className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-all active:scale-95"
+                    title={fcmToken ? "Click to test chime sound" : "Enable Push Notifications & Chime"}
+                  >
+                    <span className={fcmToken ? "text-emerald-400" : "text-amber-400"}>🔔</span>
+                    <span className="hidden sm:inline">{fcmToken ? "Enabled" : "Notifications"}</span>
+                  </button>
+
                   {/* Today Badge */}
                   <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2 shadow-sm shrink-0">
                     <SunIcon className="w-4 h-4 text-[#FFB020]" />
@@ -970,6 +1197,9 @@ export default function Home() {
                             {t.text}
                           </p>
                         </div>
+
+                        {/* Task Countdown Timer */}
+                        <TaskTimer task={t} onAlarmTriggered={handleAlarmTriggered} onStopTimer={handleStopTimer} />
 
                         {/* Category Tag */}
                         <span
