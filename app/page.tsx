@@ -722,20 +722,42 @@ export default function Home() {
           {/* ══════════ RIGHT PANEL ══════════ */}
           <section className="space-y-6">
             {/* Header + Stats */}
-            <div className="glass-panel rounded-3xl p-6 shadow-card animate-fadeUp" style={{ animationDelay: "0.05s" }}>
-              <div className="flex items-center justify-between mb-6">
+            <div className="glass-panel rounded-3xl p-6 shadow-card animate-fadeUp relative overflow-hidden bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-900/80" style={{ animationDelay: "0.05s" }}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                  <h1 className="font-heading text-3xl font-extrabold text-white tracking-tight">Tasks</h1>
-                  <p className="text-xs font-medium text-slate-400 mt-1">Organize your day, one task at a time.</p>
+                  <h1 className="font-heading text-3xl md:text-5xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                    <span className="text-4xl animate-bounce shrink-0">👋</span>
+                    <span className="text-white">Welcome back,</span>
+                    <span className="relative inline-block ml-1">
+                      <span className="font-handwriting text-5xl md:text-6xl font-bold bg-gradient-to-r from-[#FFB020] via-[#FF6B4A] to-[#FF3B60] bg-clip-text text-transparent transform -rotate-2 inline-block drop-shadow-md">
+                        Subeer!
+                      </span>
+                      {/* Underline brush SVG */}
+                      <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#FF6B4A]" viewBox="0 0 100 20" preserveAspectRatio="none" fill="none">
+                        <path d="M 5 12 Q 50 18 95 6" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                  </h1>
+                  <p className="text-xs font-medium text-slate-300 mt-1 flex items-center gap-1">
+                    Stay focused, stay consistent, and make it happen. 🚀
+                  </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-sm">
-                    <SunIcon className="w-4 h-4 text-[#FFB020]" />
-                    <span className="text-xs font-semibold text-white">Today</span>
+
+                <div className="flex items-center gap-3 self-start md:self-auto">
+                  {/* Top Right Quote snippet */}
+                  <div className="hidden xl:block text-right pr-2">
+                    <p className="text-[11px] italic text-slate-300 font-medium">
+                      &quot;Discipline today builds the success of tomorrow.&quot;
+                    </p>
+                    <p className="text-[10px] text-[#FF6B4A] font-semibold mt-0.5">
+                      — Good Day Ahead! ☀️
+                    </p>
                   </div>
-                  <span className="font-heading text-2xl font-bold text-sky-400 italic hidden sm:inline-block tracking-wide opacity-90">
-                    Good Day!
-                  </span>
+                  {/* Today Badge */}
+                  <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2 shadow-sm shrink-0">
+                    <SunIcon className="w-4 h-4 text-[#FFB020]" />
+                    <span className="text-xs font-semibold text-white">{monthShort}, {day} {year}</span>
+                  </div>
                 </div>
               </div>
 
