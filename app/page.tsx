@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import { ref, onValue, set, push, remove, update } from "firebase/database";
-import { enableNotifications, listenToForegroundMessages, playNotificationSound, stopNotificationSound } from "@/lib/notification";
+import {
+  cancelScheduledNotificationSound,
+  enableNotifications,
+  listenToForegroundMessages,
+  playNotificationSound,
+  scheduleNotificationSound,
+  stopNotificationSound,
+} from "@/lib/notification";
 
 /* ───────── Types ───────── */
 type Category = "Work" | "Personal" | "Study";
@@ -479,6 +486,7 @@ export default function Home() {
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scheduledTimerIds = useRef(new Set<string>());
 
   /* ── Initialize Push Notifications ── */
   useEffect(() => {
@@ -492,6 +500,23 @@ export default function Home() {
       console.log("Notification payload received:", payload);
     });
   }, []);
+
+  // Put active alarms in Web Audio as soon as tasks are loaded or edited. Unlike
+  // setInterval, this schedule is not held back when the tab is minimised.
+  useEffect(() => {
+    const activeIds = new Set<string>();
+    Object.values(tasks).flat().forEach((task) => {
+      if (task.timerEnd && !task.done && task.timerEnd > Date.now()) {
+        activeIds.add(task.id);
+        scheduleNotificationSound(task.id, task.timerEnd);
+      }
+    });
+
+    scheduledTimerIds.current.forEach((id) => {
+      if (!activeIds.has(id)) cancelScheduledNotificationSound(id);
+    });
+    scheduledTimerIds.current = activeIds;
+  }, [tasks]);
 
   /* ── Sync tasks from Firebase Realtime Database ── */
   useEffect(() => {
@@ -722,6 +747,7 @@ export default function Home() {
   const handleStopTimer = useCallback(
     (taskId: string) => {
       stopNotificationSound();
+      cancelScheduledNotificationSound(taskId);
       const task = (tasks[selectedKey] || []).find((t) => t.id === taskId);
       if (!task) return;
 
@@ -752,6 +778,14 @@ export default function Home() {
   );
 
   function saveEditedTask(updated: Task) {
+    // This runs directly from the Save button click, satisfying the browser's
+    // audio-activation requirement before the tab can be sent to background.
+    if (updated.timerEnd && !updated.done) {
+      scheduleNotificationSound(updated.id, updated.timerEnd);
+    } else {
+      cancelScheduledNotificationSound(updated.id);
+    }
+
     // Optimistic update
     setTasks((prev) => {
       const currentList = prev[selectedKey] || [];

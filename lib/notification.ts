@@ -4,11 +4,78 @@ import { getToken, onMessage } from "firebase/messaging";
 import { getFirebaseMessaging } from "./firebase";
 
 let currentAudio: HTMLAudioElement | null = null;
+let audioContext: AudioContext | null = null;
+let alarmBuffer: AudioBuffer | null = null;
+const scheduledAlarms = new Map<string, { end: number; source: AudioBufferSourceNode }>();
+
+function getAudioContext() {
+  if (typeof window === "undefined") return null;
+  if (!audioContext) {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    audioContext = new AudioContextClass();
+  }
+  return audioContext;
+}
+
+async function getAlarmBuffer(context: AudioContext) {
+  if (alarmBuffer) return alarmBuffer;
+  const response = await fetch("/warning.mp3");
+  alarmBuffer = await context.decodeAudioData(await response.arrayBuffer());
+  return alarmBuffer;
+}
+
+// Schedule the alarm in the audio engine, which is not delayed by a hidden-tab
+// JavaScript interval. The browser still requires that audio was enabled by a user.
+export async function scheduleNotificationSound(id: string, end: number) {
+  const existing = scheduledAlarms.get(id);
+  if (existing?.end === end) return;
+  cancelScheduledNotificationSound(id);
+
+  const context = getAudioContext();
+  if (!context || end <= Date.now()) return;
+
+  try {
+    await context.resume();
+    const buffer = await getAlarmBuffer(context);
+    const secondsUntilAlarm = Math.max(0, (end - Date.now()) / 1000);
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(context.destination);
+    source.start(context.currentTime + secondsUntilAlarm);
+    source.onended = () => {
+      if (scheduledAlarms.get(id)?.source === source) scheduledAlarms.delete(id);
+    };
+    scheduledAlarms.set(id, { end, source });
+  } catch (err) {
+    console.log("Could not schedule alarm audio:", err);
+  }
+}
+
+export function cancelScheduledNotificationSound(id: string) {
+  const alarm = scheduledAlarms.get(id);
+  if (!alarm) return;
+  try {
+    alarm.source.stop();
+    alarm.source.disconnect();
+  } catch {
+    // The source may already have stopped.
+  }
+  scheduledAlarms.delete(id);
+}
 
 // Play audio notification sound continuously until stopped
 export function playNotificationSound(loop: boolean = false) {
   try {
     if (typeof window === "undefined") return;
+
+    // Unlock and preload Web Audio while the user is interacting with the app.
+    // Future alarms can then play even if the tab is minimised.
+    const context = getAudioContext();
+    if (context) {
+      context.resume().then(() => getAlarmBuffer(context)).catch(() => undefined);
+    }
     
     // Stop any previously playing audio instance
     if (currentAudio) {
@@ -74,9 +141,6 @@ export async function enableNotifications() {
     });
 
     console.log("FCM Token:", token);
-    
-    // Play test notification chime sound upon activation
-    playNotificationSound();
     
     return token;
   } catch (error) {
