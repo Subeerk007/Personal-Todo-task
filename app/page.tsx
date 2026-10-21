@@ -18,6 +18,8 @@ type Category = "Work" | "Personal" | "Study";
 type Task = {
   id: string;
   text: string;
+  title?: string;        // optional short title
+  description?: string;  // optional longer description
   done: boolean;
   category: Category;
   createdAt: number;
@@ -288,11 +290,10 @@ function TaskTimer({
   return (
     <div className="inline-flex items-center gap-2">
       <span
-        className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-mono font-bold tracking-wider ${
-          isExpired
+        className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-mono font-bold tracking-wider ${isExpired
             ? "bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse"
             : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-        }`}
+          }`}
         title={isExpired ? "Timer Expired! ⏰" : "Countdown Timer Active"}
       >
         <span className={isExpired ? "animate-bounce text-rose-400" : "animate-spin text-amber-400"}>⏰</span>
@@ -315,6 +316,123 @@ function TaskTimer({
   );
 }
 
+/* ─────── Add Task Modal ─────── */
+function AddTaskModal({
+  defaultCategory,
+  onAdd,
+  onClose,
+}: {
+  defaultCategory: Category;
+  onAdd: (text: string, title: string, desc: string, category: Category) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [category, setCategory] = useState<Category>(defaultCategory);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { titleRef.current?.focus(); }, []);
+
+  function handleAdd() {
+    if (!text.trim()) return;
+    onAdd(text.trim(), title.trim(), desc.trim(), category);
+  }
+
+  return (
+    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-3xl bg-slate-900 border border-white/15 p-6 shadow-2xl animate-scaleIn text-white"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-heading text-xl font-bold text-white flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FF6B4A] to-[#FF4500] flex items-center justify-center text-sm">+</span>
+            Add New Task
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold transition-colors">✕</button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">🏷️ Title <span className="text-slate-600 normal-case">(optional)</span></label>
+            <input
+              ref={titleRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Short catchy title..."
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A] transition-colors"
+            />
+          </div>
+
+          {/* Task Text */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">📋 Task <span className="text-rose-400">*</span></label>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+              placeholder="What needs to be done?"
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A] transition-colors"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">📝 Description <span className="text-slate-600 normal-case">(optional)</span></label>
+            <textarea
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Add more details about this task..."
+              rows={3}
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A] resize-none transition-colors"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">🗂️ Category</label>
+            <div className="flex gap-2">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.label}
+                  onClick={() => setCategory(c.label)}
+                  className={`flex-1 rounded-2xl px-4 py-2.5 text-xs font-bold border transition-all ${
+                    category === c.label
+                      ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF4500] border-transparent text-white shadow-lg shadow-orange-500/20"
+                      : "border-white/10 text-slate-300 hover:border-white/20 hover:text-white bg-black/20"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
+          <button
+            onClick={onClose}
+            className="rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-300 border border-white/10 hover:bg-white/5 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAdd}
+            disabled={!text.trim()}
+            className="add-btn flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF6B4A] to-[#FF4500] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/20 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <span className="text-base">+</span> Add Task
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─────── Edit Modal ─────── */
 function EditModal({
   task,
@@ -326,6 +444,8 @@ function EditModal({
   onClose: () => void;
 }) {
   const [text, setText] = useState(task.text);
+  const [title, setTitle] = useState(task.title || "");
+  const [description, setDescription] = useState(task.description || "");
   const [category, setCategory] = useState<Category>(task.category);
 
   // Timer state for modal
@@ -360,6 +480,8 @@ function EditModal({
     onSave({
       ...task,
       text: text.trim(),
+      title: title.trim() || undefined,
+      description: description.trim() || undefined,
       category,
       timerDuration: updatedTimerDuration,
       timerEnd: updatedTimerEnd,
@@ -380,10 +502,34 @@ function EditModal({
         </div>
 
         <div className="space-y-4">
+          {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Task Description</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Task Title <span className="text-slate-500 font-normal">(optional)</span></label>
             <input
               ref={inputRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Short title for this task..."
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A]"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Description <span className="text-slate-500 font-normal">(optional)</span></label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detailed description..."
+              rows={3}
+              className="task-input w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none focus:border-[#FF6B4A] resize-none"
+            />
+          </div>
+
+          {/* Task text (main identifier) */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Task Text</label>
+            <input
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
@@ -477,11 +623,13 @@ export default function Home() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [tasks, setTasks] = useState<TaskMap>({});
   const [draft, setDraft] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [draftCategory, setDraftCategory] = useState<Category>("Work");
   const [filter, setFilter] = useState<FilterType>("all");
   const [hydrated, setHydrated] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [quote, setQuote] = useState<{ q: string; a: string } | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(true);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -647,30 +795,33 @@ export default function Home() {
     setViewYear(today.getFullYear());
   }
 
-  function addTask() {
-    const text = draft.trim();
-    if (!text) return;
+  function addTask(text: string, title: string, desc: string, category: Category) {
     const newTask: Task = {
       id: Date.now().toString(),
       text,
+      title: title || undefined,
+      description: desc || undefined,
       done: false,
-      category: draftCategory,
+      category,
       createdAt: Date.now(),
     };
+
+    setShowAddModal(false);
+    setDraft("");
 
     // Optimistically update local state immediately
     setTasks((prev) => {
       const currentList = prev[selectedKey] || [];
       return { ...prev, [selectedKey]: [newTask, ...currentList] };
     });
-    setDraft("");
-    inputRef.current?.focus();
 
     // Push to Firebase Realtime Database
     try {
       const dateRef = ref(db, `${DB_TASKS_PATH}/${selectedKey}`);
       push(dateRef, {
         text: newTask.text,
+        title: newTask.title ?? null,
+        description: newTask.description ?? null,
         done: newTask.done,
         category: newTask.category,
         createdAt: newTask.createdAt,
@@ -1105,11 +1256,13 @@ export default function Home() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        addTask();
+                        setShowAddModal(true);
                       }
                     }}
-                    placeholder="Task ka description likho..."
-                    className="task-input flex-1 bg-transparent text-sm text-white placeholder:text-slate-400 outline-none border-none"
+                    onClick={() => setShowAddModal(true)}
+                    placeholder="Click or press Enter to add a task..."
+                    readOnly
+                    className="task-input flex-1 bg-transparent text-sm text-white placeholder:text-slate-400 outline-none border-none cursor-pointer"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -1125,7 +1278,7 @@ export default function Home() {
                   </select>
                   <button
                     id="add-task-btn"
-                    onClick={addTask}
+                    onClick={() => setShowAddModal(true)}
                     className="add-btn flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF6B4A] to-[#FF4500] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/30 whitespace-nowrap hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
                     <PlusIcon className="w-4 h-4 stroke-[3]" />
@@ -1151,27 +1304,24 @@ export default function Home() {
                   <button
                     id="filter-all"
                     onClick={() => setFilter("all")}
-                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                      filter === "all" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
-                    }`}
+                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === "all" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
+                      }`}
                   >
                     All {dayTasks.length > 0 && <span className="ml-1.5 opacity-80 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{dayTasks.length}</span>}
                   </button>
                   <button
                     id="filter-pending"
                     onClick={() => setFilter("pending")}
-                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                      filter === "pending" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
-                    }`}
+                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === "pending" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
+                      }`}
                   >
                     Pending {pendingCount > 0 && <span className="ml-1.5 opacity-80 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{pendingCount}</span>}
                   </button>
                   <button
                     id="filter-completed"
                     onClick={() => setFilter("completed")}
-                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                      filter === "completed" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
-                    }`}
+                    className={`filter-tab rounded-xl px-4 py-2 text-xs font-bold transition-all ${filter === "completed" ? "bg-gradient-to-r from-[#FF6B4A] to-[#FF522B] text-white shadow-md shadow-orange-500/20" : "text-slate-400 hover:text-white"
+                      }`}
                   >
                     Completed {completedCount > 0 && <span className="ml-1.5 opacity-80 px-1.5 py-0.5 bg-white/20 rounded-md text-[10px]">{completedCount}</span>}
                   </button>
@@ -1188,8 +1338,8 @@ export default function Home() {
                     {filter === "all"
                       ? "No tasks for this date yet"
                       : filter === "pending"
-                      ? "No pending tasks"
-                      : "No completed tasks"
+                        ? "No pending tasks"
+                        : "No completed tasks"
                     }
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
@@ -1197,71 +1347,112 @@ export default function Home() {
                   </p>
                 </div>
               ) : (
-                <ul className="space-y-3 max-h-[440px] overflow-y-auto custom-scrollbar pr-1">
+                <ul className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
                   {filteredTasks.map((t, i) => {
                     const catStyle = getCategoryStyle(t.category);
+                    const isExpanded = expandedTaskId === t.id;
+                    const hasDesc = !!(t.description && t.description.trim());
                     return (
                       <li
                         key={t.id}
-                        className="task-item group flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 hover:bg-white/5 px-5 py-4 transition-all animate-fadeUp"
+                        className="task-item group rounded-2xl border border-white/10 bg-black/20 hover:bg-white/5 transition-all animate-fadeUp overflow-hidden"
                         style={{ animationDelay: `${i * 0.05}s` }}
                       >
-                        {/* Checkbox */}
-                        <button
-                          id={`toggle-${t.id}`}
-                          onClick={() => toggleTask(t.id)}
-                          className={[
-                            "task-checkbox shrink-0 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all",
-                            t.done
-                              ? "checked border-emerald-500 bg-emerald-500 shadow-md shadow-emerald-500/30"
-                              : "border-slate-500 hover:border-[#FF6B4A]",
-                          ].join(" ")}
-                        >
-                          {t.done && <CheckIcon className="w-3.5 h-3.5 text-white stroke-[3] animate-checkmark" />}
-                        </button>
-
-                        {/* Text */}
-                        <div className="flex-1 min-w-0">
-                          <p
+                        {/* Main row */}
+                        <div className="flex items-center gap-4 px-5 py-4">
+                          {/* Checkbox */}
+                          <button
+                            id={`toggle-${t.id}`}
+                            onClick={() => toggleTask(t.id)}
                             className={[
-                              "text-sm font-medium transition-all",
-                              t.done ? "text-slate-500 line-through" : "text-white",
+                              "task-checkbox shrink-0 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all",
+                              t.done
+                                ? "checked border-emerald-500 bg-emerald-500 shadow-md shadow-emerald-500/30"
+                                : "border-slate-500 hover:border-[#FF6B4A]",
                             ].join(" ")}
                           >
-                            {t.text}
-                          </p>
+                            {t.done && <CheckIcon className="w-3.5 h-3.5 text-white stroke-[3] animate-checkmark" />}
+                          </button>
+
+                          {/* Title + text */}
+                          <div className="flex-1 min-w-0">
+                            {t.title && (
+                              <p className={[
+                                "text-[13px] font-bold tracking-wide mb-0.5 truncate",
+                                t.done ? "text-slate-500 line-through" : "text-[#FF8C6B]",
+                              ].join(" ")}>
+                                {t.title}
+                              </p>
+                            )}
+                            <p
+                              className={[
+                                "text-sm font-medium transition-all truncate",
+                                t.done ? "text-slate-500 line-through" : "text-white",
+                              ].join(" ")}
+                            >
+                              {t.text}
+                            </p>
+                          </div>
+
+                          {/* Task Countdown Timer */}
+                          <TaskTimer task={t} onAlarmTriggered={handleAlarmTriggered} onStopTimer={handleStopTimer} />
+
+                          {/* Category Tag */}
+                          <span
+                            className={`category-tag hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1 text-[11px] font-bold ${catStyle.bg} ${catStyle.color} border border-white/5`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {t.category}
+                          </span>
+
+                          {/* Expand arrow (only if description exists) */}
+                          {hasDesc && (
+                            <button
+                              id={`expand-${t.id}`}
+                              onClick={() => setExpandedTaskId(isExpanded ? null : t.id)}
+                              aria-label={isExpanded ? "Collapse description" : "Expand description"}
+                              className="shrink-0 rounded-xl p-2 hover:bg-white/10 text-slate-400 hover:text-[#FF6B4A] transition-all"
+                              title="View description"
+                            >
+                              <svg
+                                className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                              >
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <button
+                              id={`edit-${t.id}`}
+                              onClick={() => setEditingTask(t)}
+                              className="edit-btn rounded-xl p-2 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
+                              aria-label="Edit task"
+                            >
+                              <EditIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              id={`delete-${t.id}`}
+                              onClick={() => deleteTask(t.id)}
+                              className="delete-btn rounded-xl p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all"
+                              aria-label="Delete task"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Task Countdown Timer */}
-                        <TaskTimer task={t} onAlarmTriggered={handleAlarmTriggered} onStopTimer={handleStopTimer} />
-
-                        {/* Category Tag */}
-                        <span
-                          className={`category-tag hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-xl px-3 py-1 text-[11px] font-bold ${catStyle.bg} ${catStyle.color} border border-white/5`}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                          {t.category}
-                        </span>
-
-                        {/* Action buttons */}
-                        <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                          <button
-                            id={`edit-${t.id}`}
-                            onClick={() => setEditingTask(t)}
-                            className="edit-btn rounded-xl p-2 hover:bg-white/10 text-slate-300 hover:text-white transition-all"
-                            aria-label="Edit task"
-                          >
-                            <EditIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            id={`delete-${t.id}`}
-                            onClick={() => deleteTask(t.id)}
-                            className="delete-btn rounded-xl p-2 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all"
-                            aria-label="Delete task"
-                          >
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {/* Expandable description panel */}
+                        {hasDesc && isExpanded && (
+                          <div className="px-5 pb-4 pt-0 border-t border-white/5 animate-fadeUp">
+                            <div className="flex items-start gap-2 mt-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+                              <span className="text-[#FF6B4A] text-sm mt-0.5">📝</span>
+                              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{t.description}</p>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     );
                   })}
@@ -1271,6 +1462,15 @@ export default function Home() {
           </section>
         </div>
       </div>
+
+      {/* Add Task Modal */}
+      {showAddModal && (
+        <AddTaskModal
+          defaultCategory={draftCategory}
+          onAdd={addTask}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
 
       {/* Edit Modal */}
       {editingTask && (
